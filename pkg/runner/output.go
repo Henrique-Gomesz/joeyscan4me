@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Henrique-Gomesz/JoeyScan4Me/pkg/logging"
 )
@@ -60,6 +61,27 @@ func ReadFileLines(filePath string) ([]string, error) {
 	}
 
 	return lines, nil
+}
+
+func NormalizeAndDedupeLines(lines []string) []string {
+	seen := make(map[string]struct{}, len(lines))
+	normalized := make([]string, 0, len(lines))
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if _, exists := seen[line]; exists {
+			continue
+		}
+
+		seen[line] = struct{}{}
+		normalized = append(normalized, line)
+	}
+
+	return normalized
 }
 
 func WriteToFile(filePath string, content string) error {

@@ -3,8 +3,8 @@ package runner
 import (
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/Henrique-Gomesz/JoeyScan4Me/pkg/logging"
 
@@ -12,75 +12,73 @@ import (
 	katanaTypes "github.com/projectdiscovery/katana/pkg/types"
 )
 
-func RunKatana(opt *Options) {
+func RunKatana(opt *Options) error {
 	httpxOutputPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), HttpxOutputFile)
 	katanaOutputPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), KatanaOutputFile)
 
 	urls, err := ReadFileLines(httpxOutputPath)
 	if err != nil {
-		logging.LogError("Failed to read httpx output file", err)
+		return fmt.Errorf("failed to read httpx output file: %w", err)
 	}
+	urls = NormalizeAndDedupeLines(urls)
 
 	if len(urls) == 0 {
 		logging.LogInfo("No URLs found to crawl")
-		return
+		emptyFile, err := CreateOutputFile(katanaOutputPath)
+		if err != nil {
+			return fmt.Errorf("failed to create empty katana output file: %w", err)
+		}
+		emptyFile.Close()
+		return nil
 	}
 
-	file, err := CreateOutputFile(katanaOutputPath)
-	if err != nil {
-		logging.LogError("Failed to create katana output file", err)
+	if err := os.MkdirAll(filepath.Dir(katanaOutputPath), 0755); err != nil {
+		return fmt.Errorf("failed to create katana output directory: %w", err)
 	}
-	defer file.Close()
 
 	logging.LogInfo("Starting crawling with Katana")
 	logging.LogInfo(fmt.Sprintf("Crawling %d URLs", len(urls)))
 
 	katanaOpts := &katanaTypes.Options{
-		MaxDepth:               3,
+		URLs:                   urls,
+		MaxDepth:               opt.KatanaDepth,
 		BodyReadSize:           math.MaxInt,
-		Timeout:                10,
-		Concurrency:            100,
-		Parallelism:            100,
+		Timeout:                opt.KatanaTimeout,
+		Concurrency:            opt.KatanaConcurrency,
+		Parallelism:            opt.KatanaParallelism,
 		Retries:                3,
-		RateLimit:              150,
+		RateLimit:              opt.KatanaRateLimit,
 		Strategy:               "depth-first",
 		ScrapeJSResponses:      true,
 		ScrapeJSLuiceResponses: true,
 		OutputFile:             katanaOutputPath,
 		ExtensionFilter:        []string{"css"},
-		Scope:                  urls,
 	}
 
 	crawlerOptions, err := katanaTypes.NewCrawlerOptions(katanaOpts)
 	if err != nil {
-		logging.LogError("Failed to create crawler options", err)
+		return fmt.Errorf("failed to create katana crawler options: %w", err)
 	}
 	defer crawlerOptions.Close()
 
 	crawler, err := standard.New(crawlerOptions)
 	if err != nil {
-		logging.LogError("Failed to create katana crawler", err)
+		return fmt.Errorf("failed to create katana crawler: %w", err)
 	}
 	defer crawler.Close()
 
-	var wg sync.WaitGroup
-
-	for _, url := range urls {
-		if url == "" {
-			continue
+	failed := 0
+	for _, targetURL := range urls {
+		if err := crawler.Crawl(targetURL); err != nil {
+			failed++
+			logging.LogError(fmt.Sprintf("Could not crawl %s", targetURL), err)
 		}
-
-		wg.Add(1)
-		go func(targetURL string) {
-			defer wg.Done()
-			err := crawler.Crawl(targetURL)
-			if err != nil {
-				logging.LogError(fmt.Sprintf("Could not crawl %s", targetURL), err)
-			}
-		}(url)
 	}
 
-	wg.Wait()
+	if failed > 0 {
+		return fmt.Errorf("katana failed to crawl %d/%d URLs", failed, len(urls))
+	}
 
 	logging.LogSuccess("Results saved to " + katanaOutputPath)
+	return nil
 }

@@ -2,7 +2,7 @@ package runner
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"path/filepath"
 
 	"github.com/Henrique-Gomesz/JoeyScan4Me/pkg/logging"
@@ -10,20 +10,20 @@ import (
 	subfinderRunner "github.com/projectdiscovery/subfinder/v2/pkg/runner"
 )
 
-func RunSubfinder(opt *Options) {
+func RunSubfinder(opt *Options) error {
 	filePath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), SubfinderOutputFile)
 	file, err := CreateOutputFile(filePath)
 
 	if err != nil {
-		logging.LogError("Failed to create output file:", err)
+		return fmt.Errorf("failed to create subfinder output file: %w", err)
 	}
 
 	defer file.Close()
 
 	subfinderOpts := &subfinderRunner.Options{
-		Threads:            10,
-		Timeout:            30,
-		MaxEnumerationTime: 10,
+		Threads:            opt.SubfinderThreads,
+		Timeout:            opt.SubfinderTimeout,
+		MaxEnumerationTime: opt.SubfinderMaxTime,
 		All:                true,
 		Domain:             []string{opt.Domain},
 		OutputFile:         filePath,
@@ -33,14 +33,14 @@ func RunSubfinder(opt *Options) {
 
 	subfinder, err := subfinderRunner.NewRunner(subfinderOpts)
 	if err != nil {
-		logging.LogError("Failed to create subfinder runner", err)
+		return fmt.Errorf("failed to create subfinder runner: %w", err)
 	}
 
 	logging.LogInfo("Running subfinder")
 	if err = subfinder.RunEnumerationWithCtx(context.Background()); err != nil {
-		logging.LogError("Failed to enumerate subdomains", err)
-
-		// end process execution because subfinder is essential to run the next tools;
-		os.Exit(1)
+		return fmt.Errorf("failed to enumerate subdomains: %w", err)
 	}
+
+	logging.LogSuccess("Subfinder finished")
+	return nil
 }

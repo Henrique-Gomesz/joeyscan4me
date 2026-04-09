@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -15,33 +16,31 @@ import (
 )
 
 // thx Claude Sonnet
-func RunGowitness(opt *Options) {
+func RunGowitness(opt *Options) error {
 	httpxOutputFile := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), HttpxOutputFile)
 	screenshotsPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), "screenshots")
 	dbPath := filepath.Join(screenshotsPath, "gowitness.sqlite3")
 
 	if _, err := os.Stat(httpxOutputFile); os.IsNotExist(err) {
-		logging.LogError("HTTPX output file not found. Run HTTPX first.", err)
-		return
+		return fmt.Errorf("httpx output file not found at %s", httpxOutputFile)
 	}
 
 	urls, err := ReadFileLines(httpxOutputFile)
 	if err != nil {
-		logging.LogError("Failed to read URLs from httpx output:", err)
-		return
+		return fmt.Errorf("failed to read URLs from httpx output: %w", err)
 	}
+	urls = NormalizeAndDedupeLines(urls)
 
 	if len(urls) == 0 {
 		logging.LogInfo("No URLs found to screenshot")
-		return
+		return nil
 	}
 
 	logging.LogInfo("Running gowitness to capture screenshots from up domains")
 
 	// Ensure screenshots directory exists
 	if err := os.MkdirAll(screenshotsPath, 0755); err != nil {
-		logging.LogError("Failed to create screenshots directory:", err)
-		return
+		return fmt.Errorf("failed to create screenshots directory: %w", err)
 	}
 
 	// Configure gowitness options
@@ -60,23 +59,20 @@ func RunGowitness(opt *Options) {
 	// Initialize chromedp driver
 	gwDriver, err := driver.NewChromedp(logger, *options)
 	if err != nil {
-		logging.LogError("Failed to create gowitness driver:", err)
-		return
+		return fmt.Errorf("failed to create gowitness driver: %w", err)
 	}
 	defer gwDriver.Close()
 
 	// Create database writer to store results
 	dbWriter, err := writers.NewDbWriter("sqlite://"+dbPath, false)
 	if err != nil {
-		logging.LogError("Failed to create database writer:", err)
-		return
+		return fmt.Errorf("failed to create database writer: %w", err)
 	}
 
 	// Create runner with database writer
 	gwRunner, err := goWitnessRunner.NewRunner(logger, gwDriver, *options, []writers.Writer{dbWriter})
 	if err != nil {
-		logging.LogError("Failed to create gowitness runner:", err)
-		return
+		return fmt.Errorf("failed to create gowitness runner: %w", err)
 	}
 	defer gwRunner.Close()
 
@@ -94,18 +90,16 @@ func RunGowitness(opt *Options) {
 	logging.LogInfo("Gowitness completed. Screenshots saved in: " + screenshotsPath)
 	logging.LogInfo("Database saved to: " + dbPath)
 	logging.LogInfo("To view results, run with --server flag")
+	return nil
 }
 
-func StartGoWitnessServer(opt *Options) {
+func StartGoWitnessServer(opt *Options) error {
 	screenshotsPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), "screenshots")
 	dbPath := filepath.Join(screenshotsPath, "gowitness.sqlite3")
 
 	// Check if database exists
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		logging.LogError("Database file not found at: "+dbPath, err)
-		logging.LogInfo("The scan may not have completed successfully or found any live targets")
-		logging.LogInfo("Please check the scan output above for errors")
-		return
+		return fmt.Errorf("database file not found at %s", dbPath)
 	}
 
 	logging.LogInfo("Starting gowitness server...")
@@ -122,4 +116,5 @@ func StartGoWitnessServer(opt *Options) {
 		screenshotsPath,
 	)
 	server.Run()
+	return nil
 }
