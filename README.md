@@ -9,6 +9,7 @@ A easy-to-use recon tool kit for subdomain enumeration, HTTP probing, web crawli
 - **HTTP Probing**: Uses [HTTPX](https://github.com/projectdiscovery/httpx) to identify live web services
 - **Web Crawling**: Uses [Katana](https://github.com/projectdiscovery/katana) to crawl discovered websites
 - **Screenshot Capture and Dashboard**: Uses [Gowitness](https://github.com/sensepost/gowitness) to capture screenshots with database storage and a web dashboard for easy viewing
+- **Resume Support**: Re-run a scan with `-r` to skip any stage whose output already exists, picking up exactly where you left off
 
 ## Installation
 You can install JoeyScan4Me using the following methods:
@@ -49,6 +50,7 @@ Usage:
 Flags:
   -d string                domain to scan (e.g. example.com)
   -w string                working directory for output files, defaults to current directory (default "./")
+  -r                       resume an existing scan, skipping stages whose output already exists
   -server                  start gowitness server at the end of scan to view screenshots
   -profile string          scan profile: balanced, stealth, aggressive, bugbounty (default "balanced")
   -summary-json            write scan summary as JSON file (default true)
@@ -115,6 +117,13 @@ Disable JSON summary file:
 ```bash
 joeyscan4me -d example.com -summary-json=false
 ```
+
+Resume an interrupted scan (skips stages that already completed):
+```bash
+joeyscan4me -d example.com -r
+```
+
+> **Tip:** To force a specific stage to re-run while resuming, delete its output file (e.g. `rm output/example.com/up_subdomains.txt`) — that stage will run again even with `-r`.
 
 ## Output Files
 The output files will be stored in the specified working directory (or current directory by default) with the following structure:
