@@ -16,6 +16,7 @@ type Options struct {
 	Domain            string
 	Workdir           string
 	Server            bool
+	Resume            bool
 	Profile           string
 	SummaryJSON       bool
 	SummaryFile       string
@@ -57,6 +58,7 @@ func ParseOptions() *Options {
 	flagSet.StringVar(&opt.Domain, "d", "", "domain to scan (e.g. example.com)")
 	flagSet.StringVar(&opt.Workdir, "w", "./", "working directory for output files, defaults to current directory")
 	flagSet.BoolVar(&opt.Server, "server", false, "start gowitness server at the end of scan to view screenshots")
+	flagSet.BoolVar(&opt.Resume, "r", false, "resume an existing scan, skipping stages whose output already exists")
 	flagSet.StringVar(&opt.Profile, "profile", "balanced", "scan profile: balanced, stealth, aggressive, bugbounty")
 	flagSet.BoolVar(&opt.SummaryJSON, "summary-json", true, "write scan summary as JSON file")
 	flagSet.StringVar(&opt.SummaryFile, "summary-file", "scan_summary.json", "scan summary JSON output filename")

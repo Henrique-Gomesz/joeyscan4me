@@ -19,7 +19,7 @@ Require Go 1.21 or higher.
 go install github.com/henrique-gomesz/joeyscan4me/cmd/joeyscan4me@main
 ```
 
-## Latest stable release (v1.1.1)
+## Latest stable release (v1.1.2)
 ```bash
 go install github.com/henrique-gomesz/joeyscan4me/cmd/joeyscan4me@latest
 ```

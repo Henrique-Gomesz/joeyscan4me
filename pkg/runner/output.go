@@ -129,3 +129,12 @@ func FileExists(filePath string) bool {
 	}
 	return !info.IsDir()
 }
+
+// FileNonEmpty returns true when filePath exists, is a regular file, and has size > 0.
+func FileNonEmpty(filePath string) bool {
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir() && info.Size() > 0
+}

@@ -16,6 +16,11 @@ func RunKatana(opt *Options) error {
 	httpxOutputPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), HttpxOutputFile)
 	katanaOutputPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), KatanaOutputFile)
 
+	if opt.Resume && FileNonEmpty(katanaOutputPath) {
+		logging.LogInfo("Skipping katana — output already exists: " + katanaOutputPath)
+		return nil
+	}
+
 	urls, err := ReadFileLines(httpxOutputPath)
 	if err != nil {
 		return fmt.Errorf("failed to read httpx output file: %w", err)

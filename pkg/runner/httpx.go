@@ -16,6 +16,11 @@ func RunHttpx(opt *Options) error {
 	techOutputPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), HttpxTechOutputFile)
 	subfinderFile := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), SubfinderOutputFile)
 
+	if opt.Resume && FileNonEmpty(outputPath) {
+		logging.LogInfo("Skipping httpx — output already exists: " + outputPath)
+		return nil
+	}
+
 	targets, err := ReadFileLines(subfinderFile)
 	if err != nil {
 		return fmt.Errorf("failed to read subfinder output file: %w", err)

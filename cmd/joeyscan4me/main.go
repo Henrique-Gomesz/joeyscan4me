@@ -7,7 +7,7 @@ import (
 	"github.com/henrique-gomesz/joeyscan4me/pkg/runner"
 )
 
-var Version string = "1.1.1"
+var Version string = "1.1.2"
 
 func main() {
 	logging.PrintBanner(Version)

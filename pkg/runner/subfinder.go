@@ -12,6 +12,12 @@ import (
 
 func RunSubfinder(opt *Options) error {
 	filePath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), SubfinderOutputFile)
+
+	if opt.Resume && FileNonEmpty(filePath) {
+		logging.LogInfo("Skipping subfinder — output already exists: " + filePath)
+		return nil
+	}
+
 	file, err := CreateOutputFile(filePath)
 
 	if err != nil {

@@ -12,6 +12,10 @@ import (
 func StartScan(opt *Options) error {
 	startedAt := time.Now()
 
+	if opt.Resume {
+		logging.LogInfo("Resume mode enabled — stages with existing output will be skipped")
+	}
+
 	if err := RunSubfinder(opt); err != nil {
 		return fmt.Errorf("subfinder failed: %w", err)
 	}

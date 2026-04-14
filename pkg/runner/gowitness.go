@@ -21,6 +21,11 @@ func RunGowitness(opt *Options) error {
 	screenshotsPath := filepath.Join(GetOutputFilePath(opt.Workdir, opt.Domain), "screenshots")
 	dbPath := filepath.Join(screenshotsPath, "gowitness.sqlite3")
 
+	if opt.Resume && FileNonEmpty(dbPath) {
+		logging.LogInfo("Skipping gowitness — database already exists: " + dbPath)
+		return nil
+	}
+
 	if _, err := os.Stat(httpxOutputFile); os.IsNotExist(err) {
 		return fmt.Errorf("httpx output file not found at %s", httpxOutputFile)
 	}
